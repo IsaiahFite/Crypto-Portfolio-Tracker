@@ -90,14 +90,11 @@
     );
 
     function CryptoPortfolioTracker() {
-      const [accounts, setAccounts] = useState(() => {
-        const saved = localStorage.getItem('cryptoAccounts');
-        return saved ? JSON.parse(saved) : [];
-      });
+      const [accounts, setAccounts] = useState([]);
       const [prices, setPrices] = useState({});
       const [loading, setLoading] = useState(false);
       const [lastUpdate, setLastUpdate] = useState(null);
-      const [newAccount, setNewAccount] = useState({ owner: '', name: '', crypto: '', amount: '' });
+      const [newAccount, setNewAccount] = useState({ owner: '', crypto: '', amount: '' });
       const [editingId, setEditingId] = useState(null);
       const [editAmount, setEditAmount] = useState('');
 
@@ -136,10 +133,6 @@
       };
 
       useEffect(() => {
-        localStorage.setItem('cryptoAccounts', JSON.stringify(accounts));
-      }, [accounts]);
-
-      useEffect(() => {
         if (accounts.length > 0) {
           fetchPrices();
           const interval = setInterval(fetchPrices, 60000);
@@ -148,13 +141,13 @@
       }, [accounts]);
 
       const addAccount = () => {
-        if (newAccount.owner && newAccount.name && newAccount.crypto && newAccount.amount) {
+        if (newAccount.owner && newAccount.crypto && newAccount.amount) {
           setAccounts([...accounts, { 
             id: Date.now(), 
             ...newAccount,
             amount: parseFloat(newAccount.amount)
           }]);
-          setNewAccount({ owner: '', name: '', crypto: '', amount: '' });
+          setNewAccount({ owner: '', crypto: '', amount: '' });
         }
       };
 
@@ -182,13 +175,6 @@
         cancelEditing();
       };
 
-      const calculateTotal = () => {
-        return accounts.reduce((total, account) => {
-          const price = prices[account.crypto]?.usd || 0;
-          return total + (account.amount * price);
-        }, 0);
-      };
-
       const calculateOwnerTotal = (owner) => {
         return accounts
           .filter(acc => acc.owner === owner)
@@ -200,6 +186,10 @@
 
       const getCryptoSymbol = (cryptoId) => {
         return supportedCryptos.find(c => c.id === cryptoId)?.symbol || cryptoId.toUpperCase();
+      };
+
+      const getCryptoName = (cryptoId) => {
+        return supportedCryptos.find(c => c.id === cryptoId)?.name || cryptoId;
       };
 
       const accountsByOwner = accounts.reduce((groups, account) => {
@@ -214,13 +204,12 @@
       const owners = Object.keys(accountsByOwner).sort();
 
       const exportToCSV = () => {
-        const headers = ['Owner', 'Account Name', 'Cryptocurrency', 'Amount', 'Current Price', 'Value'];
+        const headers = ['Owner', 'Cryptocurrency', 'Amount', 'Current Price', 'Value'];
         const rows = accounts.map(account => {
           const price = prices[account.crypto]?.usd || 0;
           const value = account.amount * price;
           return [
             account.owner,
-            account.name,
             getCryptoSymbol(account.crypto),
             account.amount,
             price.toFixed(2),
@@ -253,13 +242,12 @@
           const imported = lines
             .filter(line => line.trim())
             .map((line, index) => {
-              const [owner, name, cryptoSymbol, amount] = line.split(',');
+              const [owner, cryptoSymbol, amount] = line.split(',');
               const crypto = supportedCryptos.find(c => c.symbol === cryptoSymbol.trim())?.id;
-              if (!crypto || !owner || !name || !amount) return null;
+              if (!crypto || !owner || !amount) return null;
               return {
                 id: Date.now() + index,
                 owner: owner.trim(),
-                name: name.trim(),
                 crypto,
                 amount: parseFloat(amount)
               };
@@ -267,7 +255,7 @@
             .filter(Boolean);
 
           if (imported.length > 0) {
-            setAccounts([...accounts, ...imported]);
+            setAccounts(imported);
           }
         };
         reader.readAsText(file);
@@ -321,19 +309,12 @@
 
               <div className="bg-white/5 rounded-xl p-6 mb-8 border border-white/10">
                 <h2 className="text-xl font-semibold text-white mb-4">Add Account</h2>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <input
                     type="text"
                     placeholder="Owner name"
                     value={newAccount.owner}
                     onChange={(e) => setNewAccount({ ...newAccount, owner: e.target.value })}
-                    className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Account name"
-                    value={newAccount.name}
-                    onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
                     className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <select
@@ -367,122 +348,113 @@
               </div>
 
               {accounts.length > 0 ? (
-                <>
-                  <div className="bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-xl p-6 mb-6 border border-emerald-500/30">
-                    <div className="text-white/60 text-sm mb-2">Total Portfolio Value (All Owners)</div>
-                    <div className="text-4xl font-bold text-white">
-                      ${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-
-                  <div className="space-y-8">
-                    {owners.map(owner => (
-                      <div key={owner} className="bg-white/5 rounded-xl p-6 border border-white/10">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center gap-3">
-                            <User className="w-6 h-6 text-blue-400" />
-                            <h2 className="text-2xl font-bold text-white">{owner}</h2>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-white/60 text-sm">Total Value</div>
-                            <div className="text-2xl font-bold text-emerald-400">
-                              ${calculateOwnerTotal(owner).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                          </div>
+                <div className="space-y-8">
+                  {owners.map(owner => (
+                    <div key={owner} className="bg-white/5 rounded-xl p-6 border border-white/10">
+                      <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                        <div className="flex items-center gap-3">
+                          <User className="w-6 h-6 text-blue-400" />
+                          <h2 className="text-2xl font-bold text-white">{owner}</h2>
                         </div>
-
-                        <div className="space-y-3">
-                          {accountsByOwner[owner].map(account => {
-                            const price = prices[account.crypto]?.usd || 0;
-                            const value = account.amount * price;
-                            const isEditing = editingId === account.id;
-                            
-                            return (
-                              <div key={account.id} className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                      <h3 className="text-lg font-semibold text-white">{account.name}</h3>
-                                      <span className="bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-sm">
-                                        {getCryptoSymbol(account.crypto)}
-                                      </span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
-                                      <div>
-                                        <div className="text-white/60">Amount</div>
-                                        {isEditing ? (
-                                          <input
-                                            type="number"
-                                            step="0.00000001"
-                                            value={editAmount}
-                                            onChange={(e) => setEditAmount(e.target.value)}
-                                            className="bg-white/10 border border-emerald-500 rounded px-2 py-1 text-white w-full focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          <div className="text-white font-medium">{account.amount.toLocaleString()}</div>
-                                        )}
-                                      </div>
-                                      <div>
-                                        <div className="text-white/60">Price</div>
-                                        <div className="text-white font-medium">
-                                          ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <div className="text-white/60">Value</div>
-                                        <div className="text-emerald-400 font-bold">
-                                          ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="ml-4 flex items-center gap-2">
-                                    {isEditing ? (
-                                      <>
-                                        <button
-                                          onClick={() => saveEdit(account.id)}
-                                          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 p-2 rounded-lg transition-colors"
-                                        >
-                                          <Check />
-                                        </button>
-                                        <button
-                                          onClick={cancelEditing}
-                                          className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 p-2 rounded-lg transition-colors"
-                                        >
-                                          <X />
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <button
-                                          onClick={() => startEditing(account)}
-                                          className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 p-2 rounded-lg transition-colors"
-                                        >
-                                          <Edit2 />
-                                        </button>
-                                        <button
-                                          onClick={() => deleteAccount(account.id)}
-                                          className="bg-red-500/20 hover:bg-red-500/30 text-red-400 p-2 rounded-lg transition-colors"
-                                        >
-                                          <Trash2 />
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="text-right">
+                          <div className="text-white/60 text-sm">Total Value</div>
+                          <div className="text-2xl font-bold text-emerald-400">
+                            ${calculateOwnerTotal(owner).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </>
+
+                      <div className="space-y-3">
+                        {accountsByOwner[owner].map(account => {
+                          const price = prices[account.crypto]?.usd || 0;
+                          const value = account.amount * price;
+                          const isEditing = editingId === account.id;
+                          
+                          return (
+                            <div key={account.id} className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <span className="bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-sm font-semibold">
+                                      {getCryptoSymbol(account.crypto)}
+                                    </span>
+                                    <h3 className="text-lg font-medium text-white/80">{getCryptoName(account.crypto)}</h3>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                      <div className="text-white/60">Amount</div>
+                                      {isEditing ? (
+                                        <input
+                                          type="number"
+                                          step="0.00000001"
+                                          value={editAmount}
+                                          onChange={(e) => setEditAmount(e.target.value)}
+                                          className="bg-white/10 border border-emerald-500 rounded px-2 py-1 text-white w-full focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        <div className="text-white font-medium">{account.amount.toLocaleString()}</div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="text-white/60">Price</div>
+                                      <div className="text-white font-medium">
+                                        ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-white/60">Value</div>
+                                      <div className="text-emerald-400 font-bold">
+                                        ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="ml-4 flex items-center gap-2">
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        onClick={() => saveEdit(account.id)}
+                                        className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 p-2 rounded-lg transition-colors"
+                                      >
+                                        <Check />
+                                      </button>
+                                      <button
+                                        onClick={cancelEditing}
+                                        className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 p-2 rounded-lg transition-colors"
+                                      >
+                                        <X />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => startEditing(account)}
+                                        className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 p-2 rounded-lg transition-colors"
+                                      >
+                                        <Edit2 />
+                                      </button>
+                                      <button
+                                        onClick={() => deleteAccount(account.id)}
+                                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 p-2 rounded-lg transition-colors"
+                                      >
+                                        <Trash2 />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-12 text-white/40">
                   <DollarSign className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p>No accounts added yet. Add your first account above to get started!</p>
+                  <p>No accounts added yet. Add your first account above or import a CSV file to get started!</p>
                 </div>
               )}
             </div>
