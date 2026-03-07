@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { PropTypes } from 'prop-types'
 import { supportedCryptos, supportedStocks } from './js/constants'
 import { fetchAllPrices } from './js/api'
 import {
@@ -87,6 +88,18 @@ const XIcon = () => (
   </svg>
 )
 
+RefreshCw.propTypes = {
+  className: PropTypes.string,
+}
+
+DollarSign.propTypes = {
+  className: PropTypes.string,
+}
+
+User.propTypes = {
+  className: PropTypes.string,
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -132,26 +145,26 @@ export default function CryptoStockPortfolioTracker() {
     }
   }, [accounts, storageEnabled])
 
-  const fetchPrices = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const allPrices = await fetchAllPrices(accounts)
-      setPrices(allPrices)
-      setLastUpdate(new Date())
-    } catch (err) {
-      console.error('Error fetching prices:', err)
-      setError('Failed to fetch prices. Please try again.')
-    }
-    setLoading(false)
+  const fetchPrices = useCallback(async () => {
+  setLoading(true)
+  setError(null)
+  try {
+    const allPrices = await fetchAllPrices(accounts)
+    setPrices(allPrices)
+    setLastUpdate(new Date())
+  } catch (err) {
+    console.error('Error fetching prices:', err)
+    setError('Failed to fetch prices. Please try again.')
   }
+  setLoading(false)
+}, [accounts])
 
   useEffect(() => {
-    if (accounts.length === 0) return
-    fetchPrices()
-    const interval = setInterval(fetchPrices, 60000)
-    return () => clearInterval(interval)
-  }, [accounts.length])
+  if (accounts.length === 0) return
+  fetchPrices()
+  const interval = setInterval(fetchPrices, 60000)
+  return () => clearInterval(interval)
+}, [fetchPrices, accounts.length])
 
   const addAccount = () => {
     if (newAccount.owner && newAccount.asset && newAccount.amount) {
