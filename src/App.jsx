@@ -604,7 +604,7 @@ export default function CryptoPortfolioTracker() {
                               value={assetDropdownOpen ? assetSearch : selectedLabel}
                               onFocus={() => { setAssetDropdownOpen(true); setAssetSearch('') }}
                               onChange={(e) => setAssetSearch(e.target.value)}
-                              className={inputCls}
+                              className={`${inputCls} w-full`}
                             />
                             {assetDropdownOpen && (
                               <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/20 rounded-lg overflow-y-auto max-h-52 z-50 shadow-xl">
