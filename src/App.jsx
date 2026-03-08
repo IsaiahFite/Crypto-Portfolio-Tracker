@@ -110,10 +110,16 @@ export default function CryptoPortfolioTracker() {
   const [newPortfolioName, setNewPortfolioName] = useState('')
   const newPortfolioInputRef = useRef(null)
 
+  // Inline dashboard portfolio creation
+  const [dashboardCreating, setDashboardCreating] = useState(false)
+  const [dashboardPortfolioName, setDashboardPortfolioName] = useState('')
+  const dashboardInputRef = useRef(null)
+
   // Add-asset form
   const [newAsset, setNewAsset] = useState({
     assetId: '', amount: '', type: 'crypto', notes: '', purchasePrice: '', purchaseDate: '',
   })
+  const [purchaseDateType, setPurchaseDateType] = useState('text')
 
   // Edit
   const [editingId, setEditingId] = useState(null)
@@ -135,6 +141,12 @@ export default function CryptoPortfolioTracker() {
       newPortfolioInputRef.current.focus()
     }
   }, [creatingPortfolio])
+
+  useEffect(() => {
+    if (dashboardCreating && dashboardInputRef.current) {
+      dashboardInputRef.current.focus()
+    }
+  }, [dashboardCreating])
 
   // Reset view state when switching portfolios
   useEffect(() => {
@@ -248,6 +260,8 @@ export default function CryptoPortfolioTracker() {
     setSelectedPortfolio(name)
     setCreatingPortfolio(false)
     setNewPortfolioName('')
+    setDashboardCreating(false)
+    setDashboardPortfolioName('')
     setShowAddForm(true)
   }
 
@@ -421,17 +435,52 @@ export default function CryptoPortfolioTracker() {
 
             {portfolios.length === 0 ? (
               <div className="text-center py-24">
-                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <BriefcaseIcon className="w-8 h-8" />
+                <div className="w-16 h-16 bg-slate-700/60 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <BriefcaseIcon className="w-8 h-8 text-slate-400" />
                 </div>
                 <p className="text-white/40 text-sm mb-5">No portfolios yet.</p>
-                <button
-                  onClick={() => setCreatingPortfolio(true)}
-                  className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <Plus />
-                  Create your first portfolio
-                </button>
+                {dashboardCreating ? (
+                  <div className="flex items-center gap-2 justify-center">
+                    <input
+                      ref={dashboardInputRef}
+                      type="text"
+                      placeholder="Portfolio name…"
+                      value={dashboardPortfolioName}
+                      onChange={(e) => setDashboardPortfolioName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && dashboardPortfolioName.trim()) {
+                          navigateToPortfolio(dashboardPortfolioName.trim())
+                        } else if (e.key === 'Escape') {
+                          setDashboardCreating(false)
+                          setDashboardPortfolioName('')
+                        }
+                      }}
+                      className="bg-white/10 border border-emerald-500/50 rounded-lg px-4 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-56"
+                    />
+                    <button
+                      onClick={() => {
+                        if (dashboardPortfolioName.trim()) navigateToPortfolio(dashboardPortfolioName.trim())
+                      }}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Create
+                    </button>
+                    <button
+                      onClick={() => { setDashboardCreating(false); setDashboardPortfolioName('') }}
+                      className="text-white/30 hover:text-white/60 transition-colors px-2 py-2"
+                    >
+                      <XIcon />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setDashboardCreating(true)}
+                    className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Plus />
+                    Create your first portfolio
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -550,15 +599,15 @@ export default function CryptoPortfolioTracker() {
                       onChange={(e) => setNewAsset({ ...newAsset, purchasePrice: e.target.value })}
                       className={inputCls}
                     />
-                    <div className="flex flex-col gap-1">
-                      <label className="text-white/40 text-xs">Purchase date (optional)</label>
-                      <input
-                        type="date"
-                        value={newAsset.purchaseDate}
-                        onChange={(e) => setNewAsset({ ...newAsset, purchaseDate: e.target.value })}
-                        className={inputCls}
-                      />
-                    </div>
+                    <input
+                      type={newAsset.purchaseDate ? 'date' : purchaseDateType}
+                      placeholder="Purchase date (optional)"
+                      value={newAsset.purchaseDate}
+                      onFocus={() => setPurchaseDateType('date')}
+                      onBlur={() => { if (!newAsset.purchaseDate) setPurchaseDateType('text') }}
+                      onChange={(e) => setNewAsset({ ...newAsset, purchaseDate: e.target.value })}
+                      className={inputCls}
+                    />
                     <input
                       type="text" placeholder="Notes (optional)"
                       value={newAsset.notes}
