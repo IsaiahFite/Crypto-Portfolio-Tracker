@@ -1,230 +1,54 @@
-import { useState, useEffect, useRef } from 'react'
-import { fetchAllPrices } from './js/api'
-import {
-  calculatePortfolioTotal,
-  generateCSV,
-  parseCSV,
-} from './js/portfolio'
+import { calculatePortfolioTotal } from './js/portfolio'
+import useAssets from './hooks/useAssets'
+import usePortfolioNav from './hooks/usePortfolioNav'
+import useAddAssetForm from './hooks/useAddAssetForm'
 import Sidebar from './components/Sidebar'
 import AddAssetForm from './components/AddAssetForm'
 import AssetRow from './components/AssetRow'
 import { Plus, BriefcaseIcon, ChevronLeft, XIcon } from './components/Icons'
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
 export default function CryptoPortfolioTracker() {
-  // Persistence
-  const [storageEnabled, setStorageEnabled] = useState(() =>
-    localStorage.getItem('portfolioStorageEnabled') === 'true'
-  )
-  const [assets, setAssets] = useState(() => {
-    if (localStorage.getItem('portfolioStorageEnabled') === 'true') {
-      const saved = localStorage.getItem('portfolioAssets')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
+  const {
+    storageEnabled, setStorageEnabled,
+    assets, prices, loading, lastUpdate, error,
+    assetsByPortfolio, portfolios, totalCombinedValue,
+    addAsset: addAssetToStore, deleteAsset, updateAsset,
+    fetchPrices, exportToCSV, importFromCSV,
+  } = useAssets()
 
-  // Prices & status
-  const [prices, setPrices] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState(null)
-  const [error, setError] = useState(null)
+  const {
+    selectedPortfolio, setSelectedPortfolio,
+    showAddForm, setShowAddForm,
+    creatingPortfolio, setCreatingPortfolio,
+    newPortfolioName, setNewPortfolioName,
+    newPortfolioInputRef,
+    dashboardCreating, setDashboardCreating,
+    dashboardPortfolioName, setDashboardPortfolioName,
+    dashboardInputRef,
+    editingId, editingAsset, setEditingAsset,
+    navigateToPortfolio, startEditing, cancelEditing,
+  } = usePortfolioNav()
 
-  // Navigation
-  const [selectedPortfolio, setSelectedPortfolio] = useState(null) // null = dashboard
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [creatingPortfolio, setCreatingPortfolio] = useState(false)
-  const [newPortfolioName, setNewPortfolioName] = useState('')
-  const newPortfolioInputRef = useRef(null)
+  const {
+    newAsset, setNewAsset,
+    purchaseDateType, setPurchaseDateType,
+    assetSearch, setAssetSearch,
+    assetDropdownOpen, setAssetDropdownOpen,
+    assetDropdownRef, resetForm,
+  } = useAddAssetForm()
 
-  // Inline dashboard portfolio creation
-  const [dashboardCreating, setDashboardCreating] = useState(false)
-  const [dashboardPortfolioName, setDashboardPortfolioName] = useState('')
-  const dashboardInputRef = useRef(null)
-
-  // Add-asset form
-  const [newAsset, setNewAsset] = useState({
-    assetId: '', amount: '', type: 'crypto', notes: '', purchasePrice: '', purchaseDate: '',
-  })
-  const [purchaseDateType, setPurchaseDateType] = useState('text')
-  const [assetSearch, setAssetSearch] = useState('')
-  const [assetDropdownOpen, setAssetDropdownOpen] = useState(false)
-  const assetDropdownRef = useRef(null)
-
-  // Edit
-  const [editingId, setEditingId] = useState(null)
-  const [editingAsset, setEditingAsset] = useState({})
-
-  // ── Effects ──
-
-  useEffect(() => {
-    localStorage.setItem('portfolioStorageEnabled', storageEnabled.toString())
-    if (!storageEnabled) localStorage.removeItem('portfolioAssets')
-  }, [storageEnabled])
-
-  useEffect(() => {
-    if (storageEnabled) localStorage.setItem('portfolioAssets', JSON.stringify(assets))
-  }, [assets, storageEnabled])
-
-  useEffect(() => {
-    if (creatingPortfolio && newPortfolioInputRef.current) {
-      newPortfolioInputRef.current.focus()
-    }
-  }, [creatingPortfolio])
-
-  useEffect(() => {
-    if (dashboardCreating && dashboardInputRef.current) {
-      dashboardInputRef.current.focus()
-    }
-  }, [dashboardCreating])
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (assetDropdownRef.current && !assetDropdownRef.current.contains(e.target)) {
-        setAssetDropdownOpen(false)
-        setAssetSearch('')
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  // Reset view state when switching portfolios
-  useEffect(() => {
-    setShowAddForm(false)
-    setEditingId(null)
-    setEditingAsset({})
-  }, [selectedPortfolio])
-
-  // ── Price fetching ──
-
-  const fetchPrices = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const allPrices = await fetchAllPrices(assets)
-      setPrices(allPrices)
-      setLastUpdate(new Date())
-    } catch (err) {
-      console.error('Error fetching prices:', err)
-      setError('Failed to fetch prices. Please try again.')
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    if (assets.length === 0) return
-    fetchPrices()
-    const interval = setInterval(fetchPrices, 60000)
-    return () => clearInterval(interval)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets.length])
-
-  // ── CRUD ──
+  // ── Bridge functions that cross hook boundaries ──
 
   const addAsset = () => {
     if (!selectedPortfolio || !newAsset.assetId || !newAsset.amount) return
-    setAssets([...assets, {
-      id: Date.now(),
-      portfolio: selectedPortfolio,
-      assetId: newAsset.assetId,
-      type: newAsset.type,
-      amount: parseFloat(newAsset.amount),
-      notes: newAsset.notes || '',
-      purchasePrice: newAsset.purchasePrice ? parseFloat(newAsset.purchasePrice) : null,
-      purchaseDate: newAsset.purchaseDate || null,
-    }])
-    setNewAsset({ assetId: '', amount: '', type: 'crypto', notes: '', purchasePrice: '', purchaseDate: '' })
-    setAssetSearch('')
-    setAssetDropdownOpen(false)
-  }
-
-  const deleteAsset = (id) => setAssets(assets.filter(a => a.id !== id))
-
-  const startEditing = (asset) => {
-    setEditingId(asset.id)
-    setEditingAsset({
-      amount: asset.amount.toString(),
-      notes: asset.notes || '',
-      purchasePrice: asset.purchasePrice?.toString() || '',
-      purchaseDate: asset.purchaseDate || '',
-    })
-  }
-
-  const cancelEditing = () => {
-    setEditingId(null)
-    setEditingAsset({})
+    addAssetToStore({ portfolio: selectedPortfolio, ...newAsset })
+    resetForm()
   }
 
   const saveEdit = (id) => {
-    const amount = parseFloat(editingAsset.amount)
-    if (amount && amount > 0) {
-      setAssets(assets.map(a =>
-        a.id === id ? {
-          ...a,
-          amount,
-          notes: editingAsset.notes || '',
-          purchasePrice: editingAsset.purchasePrice ? parseFloat(editingAsset.purchasePrice) : null,
-          purchaseDate: editingAsset.purchaseDate || null,
-        } : a
-      ))
-    }
+    updateAsset(id, editingAsset)
     cancelEditing()
   }
-
-  // ── CSV ──
-
-  const exportToCSV = () => {
-    const csvContent = generateCSV(assets, prices)
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `portfolio-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-  }
-
-  const importFromCSV = (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const imported = parseCSV(e.target.result)
-      if (imported.length > 0) setAssets(imported)
-    }
-    reader.readAsText(file)
-    event.target.value = ''
-  }
-
-  // ── New portfolio flow ──
-
-  const navigateToPortfolio = (name) => {
-    setSelectedPortfolio(name)
-    setCreatingPortfolio(false)
-    setNewPortfolioName('')
-    setDashboardCreating(false)
-    setDashboardPortfolioName('')
-    setShowAddForm(true)
-  }
-
-  // ── Derived state ──
-
-  const assetsByPortfolio = assets.reduce((groups, asset) => {
-    const p = asset.portfolio
-    if (!groups[p]) groups[p] = []
-    groups[p].push(asset)
-    return groups
-  }, {})
-
-  const portfolios = Object.keys(assetsByPortfolio).sort()
-
-  const totalCombinedValue = portfolios.reduce(
-    (sum, p) => sum + calculatePortfolioTotal(assets, prices, p), 0
-  )
 
   // ---------------------------------------------------------------------------
   // Render
@@ -253,7 +77,6 @@ export default function CryptoPortfolioTracker() {
         onRefresh={fetchPrices}
       />
 
-      {/* ── Main content ── */}
       <main className="flex-1 overflow-auto p-6 min-w-0">
 
         {error && (
@@ -298,19 +121,13 @@ export default function CryptoPortfolioTracker() {
                       value={dashboardPortfolioName}
                       onChange={(e) => setDashboardPortfolioName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && dashboardPortfolioName.trim()) {
-                          navigateToPortfolio(dashboardPortfolioName.trim())
-                        } else if (e.key === 'Escape') {
-                          setDashboardCreating(false)
-                          setDashboardPortfolioName('')
-                        }
+                        if (e.key === 'Enter' && dashboardPortfolioName.trim()) navigateToPortfolio(dashboardPortfolioName.trim())
+                        else if (e.key === 'Escape') { setDashboardCreating(false); setDashboardPortfolioName('') }
                       }}
                       className="bg-white/10 border border-emerald-500/50 rounded-lg px-4 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-56"
                     />
                     <button
-                      onClick={() => {
-                        if (dashboardPortfolioName.trim()) navigateToPortfolio(dashboardPortfolioName.trim())
-                      }}
+                      onClick={() => { if (dashboardPortfolioName.trim()) navigateToPortfolio(dashboardPortfolioName.trim()) }}
                       className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
                       Create
@@ -360,14 +177,11 @@ export default function CryptoPortfolioTracker() {
                         {stockCount > 0 && <span className="text-blue-400/70">{stockCount} stock{stockCount !== 1 ? 's' : ''}</span>}
                       </div>
                       <div className="mt-4 pt-3 border-t border-white/10">
-                        <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors">
-                          View portfolio →
-                        </span>
+                        <span className="text-xs text-white/30 group-hover:text-white/50 transition-colors">View portfolio →</span>
                       </div>
                     </div>
                   )
                 })}
-
                 <button
                   onClick={() => setCreatingPortfolio(true)}
                   className="bg-transparent border border-dashed border-white/15 rounded-xl p-5 hover:border-white/30 hover:bg-white/[0.03] transition-all text-white/30 hover:text-white/50 flex flex-col items-center justify-center gap-2 min-h-[168px]"
