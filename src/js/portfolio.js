@@ -14,12 +14,12 @@ export function getAssetName(assetId, type) {
   return supportedStocks.find(s => s.symbol === assetId)?.name || assetId
 }
 
-export function calculateOwnerTotal(accounts, prices, owner) {
-  return accounts
-    .filter(acc => acc.owner === owner)
-    .reduce((total, account) => {
-      const price = prices[account.asset]?.usd || 0
-      return total + account.amount * price
+export function calculatePortfolioTotal(assets, prices, portfolio) {
+  return assets
+    .filter(a => a.portfolio === portfolio)
+    .reduce((total, a) => {
+      const price = prices[a.assetId]?.usd || 0
+      return total + a.amount * price
     }, 0)
 }
 
@@ -38,28 +38,28 @@ export function calculateGainLoss(amount, currentPrice, purchasePrice) {
  * Generates a CSV string from portfolio data. Does not trigger a download.
  * The caller is responsible for writing the string to a file / blob.
  */
-export function generateCSV(accounts, prices) {
+export function generateCSV(assets, prices) {
   const headers = [
-    'Owner', 'Type', 'Asset', 'Amount',
+    'Portfolio', 'Type', 'Asset', 'Amount',
     'Current Price', 'Value', 'Purchase Price',
     'Total Cost', 'Purchase Date', 'Notes',
   ]
 
-  const rows = accounts.map(account => {
-    const price = prices[account.asset]?.usd || 0
-    const value = account.amount * price
-    const totalCost = account.purchasePrice ? account.amount * account.purchasePrice : ''
-    const escapedNotes = account.notes ? `"${account.notes.replace(/"/g, '""')}"` : ''
+  const rows = assets.map(asset => {
+    const price = prices[asset.assetId]?.usd || 0
+    const value = asset.amount * price
+    const totalCost = asset.purchasePrice ? asset.amount * asset.purchasePrice : ''
+    const escapedNotes = asset.notes ? `"${asset.notes.replace(/"/g, '""')}"` : ''
     return [
-      account.owner,
-      account.type,
-      getAssetSymbol(account.asset, account.type),
-      account.amount,
+      asset.portfolio,
+      asset.type,
+      getAssetSymbol(asset.assetId, asset.type),
+      asset.amount,
       price.toFixed(2),
       value.toFixed(2),
-      account.purchasePrice || '',
+      asset.purchasePrice || '',
       totalCost ? totalCost.toFixed(2) : '',
-      account.purchaseDate || '',
+      asset.purchaseDate || '',
       escapedNotes,
     ]
   })
@@ -68,7 +68,7 @@ export function generateCSV(accounts, prices) {
 }
 
 /**
- * Parses a CSV string (exported by generateCSV) into an accounts array.
+ * Parses a CSV string (exported by generateCSV) into an assets array.
  * Does not interact with FileReader — the caller handles file I/O.
  */
 export function parseCSV(text) {
@@ -93,22 +93,22 @@ export function parseCSV(text) {
       }
       parts.push(current)
 
-      const [owner, type, assetSymbol, amount, , , purchasePrice, , purchaseDate, notes] = parts
-      let asset
+      const [portfolio, type, assetSymbol, amount, , , purchasePrice, , purchaseDate, notes] = parts
+      let assetId
 
       if (type?.trim() === 'crypto') {
-        asset = supportedCryptos.find(c => c.symbol === assetSymbol?.trim())?.id
+        assetId = supportedCryptos.find(c => c.symbol === assetSymbol?.trim())?.id
       } else {
-        asset = assetSymbol?.trim()
+        assetId = assetSymbol?.trim()
       }
 
-      if (!asset || !owner || !amount) return null
+      if (!assetId || !portfolio || !amount) return null
 
       return {
         id: Date.now() + index,
-        owner: owner.trim(),
+        portfolio: portfolio.trim(),
         type: type.trim(),
-        asset,
+        assetId,
         amount: parseFloat(amount),
         purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
         purchaseDate: purchaseDate?.trim() || null,
