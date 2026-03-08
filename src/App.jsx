@@ -1,84 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import PropTypes from 'prop-types'
-import { supportedCryptos, supportedStocks } from './js/constants'
 import { fetchAllPrices } from './js/api'
 import {
   calculatePortfolioTotal,
-  calculateGainLoss,
-  getAssetSymbol,
-  getAssetName,
   generateCSV,
   parseCSV,
 } from './js/portfolio'
-
-// ---------------------------------------------------------------------------
-// SVG icon components
-// ---------------------------------------------------------------------------
-
-const Plus = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-)
-const Trash2 = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-  </svg>
-)
-const RefreshCw = ({ className }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-  </svg>
-)
-RefreshCw.propTypes = { className: PropTypes.string }
-
-const DollarSign = ({ className }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-  </svg>
-)
-DollarSign.propTypes = { className: PropTypes.string }
-const Download = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
-)
-const Upload = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-  </svg>
-)
-const Edit2 = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-  </svg>
-)
-const Check = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-)
-const XIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-)
-const ChevronLeft = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-)
-const HomeIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
-  </svg>
-)
-const BriefcaseIcon = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className ?? 'w-3.5 h-3.5'}>
-    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-  </svg>
-)
-BriefcaseIcon.propTypes = { className: PropTypes.string }
+import Sidebar from './components/Sidebar'
+import AddAssetForm from './components/AddAssetForm'
+import AssetRow from './components/AssetRow'
+import { Plus, BriefcaseIcon, ChevronLeft, XIcon } from './components/Icons'
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -296,8 +226,6 @@ export default function CryptoPortfolioTracker() {
     (sum, p) => sum + calculatePortfolioTotal(assets, prices, p), 0
   )
 
-  const inputCls = 'bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500'
-
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -305,119 +233,25 @@ export default function CryptoPortfolioTracker() {
   return (
     <div className="min-h-screen bg-slate-950 flex">
 
-      {/* ── Sidebar ── */}
-      <aside className="w-56 min-h-screen bg-slate-900 border-r border-white/10 flex flex-col flex-shrink-0">
-
-        <div className="p-4 border-b border-white/10 flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <DollarSign className="text-emerald-400" />
-          </div>
-          <span className="text-white font-semibold text-sm">Portfolio Tracker</span>
-        </div>
-
-        <nav className="flex-1 p-3 overflow-y-auto space-y-0.5">
-          <button
-            onClick={() => setSelectedPortfolio(null)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
-              selectedPortfolio === null
-                ? 'bg-emerald-500/20 text-emerald-400 font-medium'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <HomeIcon />
-            Dashboard
-          </button>
-
-          {portfolios.length > 0 && (
-            <div className="pt-3">
-              <div className="px-3 mb-1.5 text-xs font-semibold text-white/30 uppercase tracking-wider">
-                Portfolios
-              </div>
-              {portfolios.map(p => (
-                <button
-                  key={p}
-                  onClick={() => setSelectedPortfolio(p)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left ${
-                    selectedPortfolio === p
-                      ? 'bg-emerald-500/20 text-emerald-400 font-medium'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span className="truncate mr-2">{p}</span>
-                  <span className="text-xs opacity-50 flex-shrink-0 tabular-nums">
-                    ${calculatePortfolioTotal(assets, prices, p).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="pt-1">
-            {creatingPortfolio ? (
-              <input
-                ref={newPortfolioInputRef}
-                type="text"
-                placeholder="Portfolio name…"
-                value={newPortfolioName}
-                onChange={(e) => setNewPortfolioName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newPortfolioName.trim()) {
-                    navigateToPortfolio(newPortfolioName.trim())
-                  } else if (e.key === 'Escape') {
-                    setCreatingPortfolio(false)
-                    setNewPortfolioName('')
-                  }
-                }}
-                onBlur={() => {
-                  if (!newPortfolioName.trim()) setCreatingPortfolio(false)
-                }}
-                className="w-full bg-white/10 border border-emerald-500/50 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            ) : (
-              <button
-                onClick={() => setCreatingPortfolio(true)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"
-              >
-                <Plus />
-                New Portfolio
-              </button>
-            )}
-          </div>
-        </nav>
-
-        <div className="p-3 border-t border-white/10 space-y-0.5">
-          <label className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/50 cursor-pointer hover:text-white/70 hover:bg-white/5 transition-colors">
-            <input
-              type="checkbox"
-              checked={storageEnabled}
-              onChange={(e) => setStorageEnabled(e.target.checked)}
-              className="w-3.5 h-3.5 accent-emerald-500"
-            />
-            Save locally
-          </label>
-          <label className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/50 cursor-pointer hover:text-white/70 hover:bg-white/5 transition-colors">
-            <Upload />
-            Import CSV
-            <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-          </label>
-          <button
-            onClick={exportToCSV}
-            disabled={assets.length === 0}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-white/70 hover:bg-white/5 disabled:opacity-30 transition-colors"
-          >
-            <Download />
-            Export CSV
-          </button>
-          <button
-            onClick={fetchPrices}
-            disabled={loading || assets.length === 0}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-white/70 hover:bg-white/5 disabled:opacity-30 transition-colors"
-          >
-            <RefreshCw className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Refreshing…' : 'Refresh prices'}
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        selectedPortfolio={selectedPortfolio}
+        portfolios={portfolios}
+        assets={assets}
+        prices={prices}
+        creatingPortfolio={creatingPortfolio}
+        newPortfolioName={newPortfolioName}
+        newPortfolioInputRef={newPortfolioInputRef}
+        storageEnabled={storageEnabled}
+        loading={loading}
+        onSelectPortfolio={setSelectedPortfolio}
+        onSetCreating={setCreatingPortfolio}
+        onPortfolioNameChange={setNewPortfolioName}
+        onNavigate={navigateToPortfolio}
+        onStorageToggle={setStorageEnabled}
+        onImportCSV={importFromCSV}
+        onExportCSV={exportToCSV}
+        onRefresh={fetchPrices}
+      />
 
       {/* ── Main content ── */}
       <main className="flex-1 overflow-auto p-6 min-w-0">
@@ -570,114 +404,19 @@ export default function CryptoPortfolioTracker() {
 
             <div className="mb-5">
               {showAddForm ? (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-white font-semibold text-sm">Add Asset</h2>
-                    <button onClick={() => setShowAddForm(false)} className="text-white/40 hover:text-white/70 transition-colors">
-                      <XIcon />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                    <select
-                      value={newAsset.type}
-                      onChange={(e) => { setNewAsset({ ...newAsset, type: e.target.value, assetId: '' }); setAssetSearch('') }}
-                      className={inputCls}
-                    >
-                      <option value="crypto" className="bg-slate-800">Cryptocurrency</option>
-                      <option value="stock" className="bg-slate-800">Stock</option>
-                    </select>
-                    <div ref={assetDropdownRef} className="relative">
-                      {(() => {
-                        const selectedLabel = newAsset.assetId
-                          ? newAsset.type === 'crypto'
-                            ? (() => { const c = supportedCryptos.find(c => c.id === newAsset.assetId); return c ? `${c.symbol} – ${c.name}` : newAsset.assetId })()
-                            : (() => { const s = supportedStocks.find(s => s.symbol === newAsset.assetId); return s ? `${s.symbol} – ${s.name}` : newAsset.assetId })()
-                          : ''
-                        const options = newAsset.type === 'crypto'
-                          ? supportedCryptos.filter(c => { const q = assetSearch.toLowerCase(); return !q || c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q) })
-                          : supportedStocks.filter(s => { const q = assetSearch.toLowerCase(); return !q || s.name.toLowerCase().includes(q) || s.symbol.toLowerCase().includes(q) })
-                        return (
-                          <>
-                            <input
-                              type="text"
-                              placeholder={`Search ${newAsset.type === 'crypto' ? 'crypto' : 'stock'}…`}
-                              value={assetDropdownOpen ? assetSearch : selectedLabel}
-                              onFocus={() => { setAssetDropdownOpen(true); setAssetSearch('') }}
-                              onChange={(e) => setAssetSearch(e.target.value)}
-                              className={`${inputCls} w-full`}
-                            />
-                            {assetDropdownOpen && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/20 rounded-lg overflow-y-auto max-h-52 z-50 shadow-xl">
-                                {options.length === 0 ? (
-                                  <div className="px-3 py-2.5 text-white/40 text-sm">No results</div>
-                                ) : options.map(item => {
-                                  const id = newAsset.type === 'crypto' ? item.id : item.symbol
-                                  const label = `${item.symbol} – ${item.name}`
-                                  return (
-                                    <button
-                                      key={id}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault()
-                                        setNewAsset({ ...newAsset, assetId: id })
-                                        setAssetDropdownOpen(false)
-                                        setAssetSearch('')
-                                      }}
-                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                                        newAsset.assetId === id
-                                          ? 'bg-emerald-500/20 text-emerald-400'
-                                          : 'text-white hover:bg-white/10'
-                                      }`}
-                                    >
-                                      {label}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                    <input
-                      type="number" step="0.00000001" placeholder="Amount *"
-                      value={newAsset.amount}
-                      onChange={(e) => setNewAsset({ ...newAsset, amount: e.target.value })}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                    <input
-                      type="number" step="0.01" placeholder="Purchase price (optional)"
-                      value={newAsset.purchasePrice}
-                      onChange={(e) => setNewAsset({ ...newAsset, purchasePrice: e.target.value })}
-                      className={inputCls}
-                    />
-                    <input
-                      type={newAsset.purchaseDate ? 'date' : purchaseDateType}
-                      placeholder="Purchase date (optional)"
-                      value={newAsset.purchaseDate}
-                      onFocus={() => setPurchaseDateType('date')}
-                      onBlur={() => { if (!newAsset.purchaseDate) setPurchaseDateType('text') }}
-                      onChange={(e) => setNewAsset({ ...newAsset, purchaseDate: e.target.value })}
-                      className={inputCls}
-                    />
-                    <input
-                      type="text" placeholder="Notes (optional)"
-                      value={newAsset.notes}
-                      onChange={(e) => setNewAsset({ ...newAsset, notes: e.target.value })}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={addAsset}
-                      className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      <Plus />
-                      Add Asset
-                    </button>
-                  </div>
-                </div>
+                <AddAssetForm
+                  newAsset={newAsset}
+                  assetSearch={assetSearch}
+                  assetDropdownOpen={assetDropdownOpen}
+                  assetDropdownRef={assetDropdownRef}
+                  purchaseDateType={purchaseDateType}
+                  onNewAssetChange={setNewAsset}
+                  onAssetSearchChange={setAssetSearch}
+                  onDropdownOpen={setAssetDropdownOpen}
+                  onPurchaseDateType={setPurchaseDateType}
+                  onAdd={addAsset}
+                  onClose={() => setShowAddForm(false)}
+                />
               ) : (
                 <button
                   onClick={() => setShowAddForm(true)}
@@ -695,165 +434,20 @@ export default function CryptoPortfolioTracker() {
               </div>
             ) : (
               <div className="space-y-2">
-                {(assetsByPortfolio[selectedPortfolio] || []).map(asset => {
-                  const price = prices[asset.assetId]?.usd || 0
-                  const isEditing = editingId === asset.id
-                  const { value, totalCost, gainLoss, gainLossPercent } = calculateGainLoss(
-                    asset.amount, price, asset.purchasePrice
-                  )
-
-                  return (
-                    <div key={asset.id} className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/[0.07] transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-
-                          <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                              asset.type === 'crypto'
-                                ? 'bg-emerald-500/20 text-emerald-300'
-                                : 'bg-blue-500/20 text-blue-300'
-                            }`}>
-                              {getAssetSymbol(asset.assetId, asset.type)}
-                            </span>
-                            <span className="text-white/80 font-medium text-sm">
-                              {getAssetName(asset.assetId, asset.type)}
-                            </span>
-                            <span className="text-white/30 text-xs uppercase">{asset.type}</span>
-                            {gainLoss !== null && (
-                              <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                gainLoss >= 0
-                                  ? 'bg-emerald-500/15 text-emerald-400'
-                                  : 'bg-red-500/15 text-red-400'
-                              }`}>
-                                {gainLoss >= 0 ? '+' : ''}{gainLossPercent.toFixed(2)}%
-                              </span>
-                            )}
-                          </div>
-
-                          {isEditing ? (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                              {[
-                                { label: 'Amount', key: 'amount', type: 'number', step: '0.00000001', placeholder: '' },
-                                { label: 'Purchase Price', key: 'purchasePrice', type: 'number', step: '0.01', placeholder: 'Per unit' },
-                                { label: 'Purchase Date', key: 'purchaseDate', type: 'date', step: '', placeholder: '' },
-                                { label: 'Notes', key: 'notes', type: 'text', step: '', placeholder: '' },
-                              ].map(({ label, key, type, step, placeholder }) => (
-                                <div key={key}>
-                                  <div className="text-white/40 text-xs mb-1">{label}</div>
-                                  <input
-                                    type={type}
-                                    step={step || undefined}
-                                    placeholder={placeholder}
-                                    value={editingAsset[key]}
-                                    onChange={(e) => setEditingAsset({ ...editingAsset, [key]: e.target.value })}
-                                    autoFocus={key === 'amount'}
-                                    className="bg-white/10 border border-white/20 rounded px-2 py-1.5 text-white text-sm w-full focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div>
-                              <div className="grid grid-cols-3 gap-4 text-sm">
-                                <div>
-                                  <div className="text-white/40 text-xs mb-0.5">Amount</div>
-                                  <div className="text-white font-medium tabular-nums">{asset.amount.toLocaleString()}</div>
-                                </div>
-                                <div>
-                                  <div className="text-white/40 text-xs mb-0.5">Price</div>
-                                  <div className="text-white font-medium tabular-nums">
-                                    ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-white/40 text-xs mb-0.5">Value</div>
-                                  <div className="text-emerald-400 font-bold tabular-nums">
-                                    ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {(asset.purchasePrice || asset.purchaseDate || asset.notes) && (
-                                <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                  {asset.purchasePrice && (
-                                    <div>
-                                      <div className="text-white/40 text-xs mb-0.5">Purchase Price</div>
-                                      <div className="text-white/70 tabular-nums">
-                                        ${asset.purchasePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {totalCost && (
-                                    <div>
-                                      <div className="text-white/40 text-xs mb-0.5">Total Cost</div>
-                                      <div className="text-white/70 tabular-nums">
-                                        ${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {gainLoss !== null && (
-                                    <div>
-                                      <div className="text-white/40 text-xs mb-0.5">Gain / Loss</div>
-                                      <div className={`tabular-nums font-medium ${gainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {asset.purchaseDate && (
-                                    <div>
-                                      <div className="text-white/40 text-xs mb-0.5">Purchase Date</div>
-                                      <div className="text-white/70">{new Date(asset.purchaseDate).toLocaleDateString()}</div>
-                                    </div>
-                                  )}
-                                  {asset.notes && (
-                                    <div className="md:col-span-4">
-                                      <div className="text-white/40 text-xs mb-0.5">Notes</div>
-                                      <div className="text-white/70 text-sm">{asset.notes}</div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {isEditing ? (
-                            <>
-                              <button
-                                onClick={() => saveEdit(asset.id)}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition-colors"
-                              >
-                                <Check />
-                              </button>
-                              <button
-                                onClick={cancelEditing}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white/60 transition-colors"
-                              >
-                                <XIcon />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => startEditing(asset)}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
-                              >
-                                <Edit2 />
-                              </button>
-                              <button
-                                onClick={() => deleteAsset(asset.id)}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
-                              >
-                                <Trash2 />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+                {(assetsByPortfolio[selectedPortfolio] || []).map(asset => (
+                  <AssetRow
+                    key={asset.id}
+                    asset={asset}
+                    price={prices[asset.assetId]?.usd || 0}
+                    isEditing={editingId === asset.id}
+                    editingAsset={editingId === asset.id ? editingAsset : {}}
+                    onStartEditing={startEditing}
+                    onDelete={deleteAsset}
+                    onSave={saveEdit}
+                    onCancel={cancelEditing}
+                    onEditChange={setEditingAsset}
+                  />
+                ))}
               </div>
             )}
           </div>
