@@ -120,6 +120,9 @@ export default function CryptoPortfolioTracker() {
     assetId: '', amount: '', type: 'crypto', notes: '', purchasePrice: '', purchaseDate: '',
   })
   const [purchaseDateType, setPurchaseDateType] = useState('text')
+  const [assetSearch, setAssetSearch] = useState('')
+  const [assetDropdownOpen, setAssetDropdownOpen] = useState(false)
+  const assetDropdownRef = useRef(null)
 
   // Edit
   const [editingId, setEditingId] = useState(null)
@@ -147,6 +150,17 @@ export default function CryptoPortfolioTracker() {
       dashboardInputRef.current.focus()
     }
   }, [dashboardCreating])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (assetDropdownRef.current && !assetDropdownRef.current.contains(e.target)) {
+        setAssetDropdownOpen(false)
+        setAssetSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   // Reset view state when switching portfolios
   useEffect(() => {
@@ -194,6 +208,8 @@ export default function CryptoPortfolioTracker() {
       purchaseDate: newAsset.purchaseDate || null,
     }])
     setNewAsset({ assetId: '', amount: '', type: 'crypto', notes: '', purchasePrice: '', purchaseDate: '' })
+    setAssetSearch('')
+    setAssetDropdownOpen(false)
   }
 
   const deleteAsset = (id) => setAssets(assets.filter(a => a.id !== id))
@@ -564,27 +580,64 @@ export default function CryptoPortfolioTracker() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <select
                       value={newAsset.type}
-                      onChange={(e) => setNewAsset({ ...newAsset, type: e.target.value, assetId: '' })}
+                      onChange={(e) => { setNewAsset({ ...newAsset, type: e.target.value, assetId: '' }); setAssetSearch('') }}
                       className={inputCls}
                     >
                       <option value="crypto" className="bg-slate-800">Cryptocurrency</option>
                       <option value="stock" className="bg-slate-800">Stock</option>
                     </select>
-                    <select
-                      value={newAsset.assetId}
-                      onChange={(e) => setNewAsset({ ...newAsset, assetId: e.target.value })}
-                      className={inputCls}
-                    >
-                      <option value="">Select {newAsset.type === 'crypto' ? 'crypto' : 'stock'}</option>
-                      {newAsset.type === 'crypto'
-                        ? supportedCryptos.map(c => (
-                          <option key={c.id} value={c.id} className="bg-slate-800">{c.symbol} – {c.name}</option>
-                        ))
-                        : supportedStocks.map(s => (
-                          <option key={s.symbol} value={s.symbol} className="bg-slate-800">{s.symbol} – {s.name}</option>
-                        ))
-                      }
-                    </select>
+                    <div ref={assetDropdownRef} className="relative">
+                      {(() => {
+                        const selectedLabel = newAsset.assetId
+                          ? newAsset.type === 'crypto'
+                            ? (() => { const c = supportedCryptos.find(c => c.id === newAsset.assetId); return c ? `${c.symbol} – ${c.name}` : newAsset.assetId })()
+                            : (() => { const s = supportedStocks.find(s => s.symbol === newAsset.assetId); return s ? `${s.symbol} – ${s.name}` : newAsset.assetId })()
+                          : ''
+                        const options = newAsset.type === 'crypto'
+                          ? supportedCryptos.filter(c => { const q = assetSearch.toLowerCase(); return !q || c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q) })
+                          : supportedStocks.filter(s => { const q = assetSearch.toLowerCase(); return !q || s.name.toLowerCase().includes(q) || s.symbol.toLowerCase().includes(q) })
+                        return (
+                          <>
+                            <input
+                              type="text"
+                              placeholder={`Search ${newAsset.type === 'crypto' ? 'crypto' : 'stock'}…`}
+                              value={assetDropdownOpen ? assetSearch : selectedLabel}
+                              onFocus={() => { setAssetDropdownOpen(true); setAssetSearch('') }}
+                              onChange={(e) => setAssetSearch(e.target.value)}
+                              className={inputCls}
+                            />
+                            {assetDropdownOpen && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/20 rounded-lg overflow-y-auto max-h-52 z-50 shadow-xl">
+                                {options.length === 0 ? (
+                                  <div className="px-3 py-2.5 text-white/40 text-sm">No results</div>
+                                ) : options.map(item => {
+                                  const id = newAsset.type === 'crypto' ? item.id : item.symbol
+                                  const label = `${item.symbol} – ${item.name}`
+                                  return (
+                                    <button
+                                      key={id}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        setNewAsset({ ...newAsset, assetId: id })
+                                        setAssetDropdownOpen(false)
+                                        setAssetSearch('')
+                                      }}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                        newAsset.assetId === id
+                                          ? 'bg-emerald-500/20 text-emerald-400'
+                                          : 'text-white hover:bg-white/10'
+                                      }`}
+                                    >
+                                      {label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
                     <input
                       type="number" step="0.00000001" placeholder="Amount *"
                       value={newAsset.amount}
